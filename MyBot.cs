@@ -1,6 +1,9 @@
 using Pirates;
 using System;
 using System.Collections.Generic;
+using DataForLife;
+
+
 namespace MyBot
 {
     public class MyBot : Pirates.IPirateBot
@@ -10,13 +13,22 @@ namespace MyBot
         List<Treasure> Gotolocations = new List<Treasure>();
         ColltionAvoider CA = new ColltionAvoider();
         bool[] HasLocation = new bool[] { false, false, false, false };
+        int index = 0;
+       
         public void DoTurn(IPirateGame game)
-        { 
-            List<PirateWithLocation>PWL = new List<PirateWithLocation>();
-            MovingOption mo = new MovingOption(PWL,game);
+        {
+            if (index == 0)
+            {
+                DataSending ds = new DataSending();
+                ds.SendData(null);
+                index++;
+            }
+
+            List<PirateWithLocation> PWL = new List<PirateWithLocation>();
+            MovingOption mo = new MovingOption(PWL, game);
 
             List<Pirate> MyPirates = game.MyPirates();
-          //  game.Debug("MyPirate[0] == Pirate id {0}", MyPirates[0].Id);
+            //  game.Debug("MyPirate[0] == Pirate id {0}", MyPirates[0].Id);
             Location[] Goto = new Location[4];
 
             for (int i = 0; i < 4; i++)
@@ -26,6 +38,7 @@ namespace MyBot
 
                 if (!HasLocation[i])
                 {
+
                     Goto[i] = GotoLocation(MyPirates[i], game);
                     PWL.Add(new PirateWithLocation(MyPirates[i], Goto[i], game));
 
@@ -43,6 +56,9 @@ namespace MyBot
                     {
 
                         Goto[i] = Gotolocations[Gotolocations.Count - 4 + MyPirates[i].Id].Location;
+                        if (!GameHasTresure(Goto[i], game))
+                            Goto[i] = Goto[i] = GotoLocation(MyPirates[i], game);
+
                         PWL.Add(new PirateWithLocation(MyPirates[i], Goto[i], game));
                         game.Debug("Pirate {0} Will Go to Location {1}:{2}", MyPirates[i].Id, Goto[i].Row, Goto[i].Col);
                     }
@@ -53,6 +69,7 @@ namespace MyBot
             game.Debug("Answer == {0} , {1} , {2}, {3}", Answer[0], Answer[1], Answer[2], Answer[3]);
             for (int i = 0; i < 4; i++)//To Add- Check Location is closest to selected player;;;;
             {
+
                 List<Location> Options = game.GetSailOptions(MyPirates[i], Goto[i], Answer[i]);
                 Location locationToGo = CA.BestLoction(Options, MyPirates[i], game);
                 if (!ComperLocations(locationToGo, MyPirates[MyPirates[i].Id].Location))
@@ -60,8 +77,23 @@ namespace MyBot
                     //    game.Debug("Pirate {0} Is Going to {1}-{2]", MyPirates[i].Id, locationToGo.Row, locationToGo.Col);
                     game.SetSail(MyPirates[MyPirates[i].Id], locationToGo);
                 }
+
             }
 
+        }
+
+        private bool GameHasTresure(Location location, IPirateGame game)
+        {
+
+            List<Treasure> AllLocations = game.Treasures();
+            foreach (Treasure t in AllLocations)
+            {
+                if (ComperLocations(t.Location, location))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void TryShoot(Pirate pirate, List<Pirate> list, IPirateGame game)
@@ -91,6 +123,7 @@ namespace MyBot
 
             for (int i = 0; i < Distances.Length; i++)
                 Distances[i] = Game.Distance(p, AllLocations[i].Location);
+
             for (int i = 0; i < Distances.Length - 1; i++)
             {
                 for (int j = i + 1; j < Distances.Length; j++)
@@ -189,8 +222,8 @@ namespace MyBot
     class MovingOption
     {
         IPirateGame game;
-     public   List<PirateWithLocation> list = new List<PirateWithLocation>();
-        public MovingOption(List<PirateWithLocation> List,IPirateGame game)
+        public List<PirateWithLocation> list = new List<PirateWithLocation>();
+        public MovingOption(List<PirateWithLocation> List, IPirateGame game)
         {
             this.list = List;
             this.game = game;
@@ -210,8 +243,31 @@ namespace MyBot
                     Count++;
                 }
             }
+            if (Count == 3)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    if (list[i].p.HasTreasure)
+                    {
+                        Answer[i] = 1;
+
+                    }
+                    else
+                    {
+                        if (list[i].Distance() < 3)
+                        {
+                            Answer[i] = list[i].Distance();
+                        }
+                        else
+                        {
+                            Answer[i] = 3;
+                        }
+                    }
+                }
+                return Answer;
+            }
             game.Debug("Count == {0}", Count);
-            
+
             if (Count == 4)
             {
                 return Answer;
@@ -255,8 +311,17 @@ namespace MyBot
                                     game.Debug("Gave {0} {1} Moves", j, Answer[j]);
                                     break;
                                 }
+
+
                             }
-                         
+                            for (int j = 0; j < 4; j++)
+                            {
+                                if (list[j].p.HasTreasure)
+                                {
+                                    Answer[j] = 1;
+                                }
+                            }
+
 
                             Answer[i] = list[i].Distance();
                             game.Debug("Gave {0} {1} Moves", i, Answer[i]);
@@ -280,7 +345,7 @@ namespace MyBot
                                 {
                                     return FreeGo(list, StepLeft);
                                 }
-                                
+
                             }
 
                         }
@@ -298,7 +363,7 @@ namespace MyBot
                         }
                     }
                 }
-              
+
             }
             return Answer;
         }
@@ -317,7 +382,7 @@ namespace MyBot
                     if (list[i].p.HasTreasure)
                     {
                         Answer[i] = 1;
-                        game.Debug("GAVE Pirate {0} - {1} Move",i,1);
+                        game.Debug("GAVE Pirate {0} - {1} Move", i, 1);
 
                     }
                     else
@@ -350,16 +415,16 @@ namespace MyBot
 
                     }
                     else
-                    {                       
-                            Answer[i] = 2;
-                            game.Debug("GAVE Pirate {0} - {1} Move", i, 2);                 
+                    {
+                        Answer[i] = 2;
+                        game.Debug("GAVE Pirate {0} - {1} Move", i, 2);
                     }
                 }
                 return Answer;
             }
             else
             {
-                game.Debug("Number of steps = {0}",StepLeft);
+                game.Debug("Number of steps = {0}", StepLeft);
                 for (int i = 0; i < 4; i++)
                 {
                     if (list[i].p.HasTreasure)
@@ -371,7 +436,7 @@ namespace MyBot
                     else
                     {
                         Answer[i] = 3;
-                        game.Debug("GAVE Pirate {0} - {1} Move", i, 3);  
+                        game.Debug("GAVE Pirate {0} - {1} Move", i, 3);
 
                     }
                 }
@@ -379,5 +444,10 @@ namespace MyBot
             }
         }
     }
+
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
 }
+
 
