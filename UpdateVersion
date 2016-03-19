@@ -1,0 +1,400 @@
+    
+    using Pirates;
+using System;
+using System.Collections.Generic;
+
+
+
+namespace MyBot
+{
+    public class MyBot : Pirates.IPirateBot
+    {
+        const string a = @"run.bat bots\csharp\ExampleBot\MyBot.cs bots\demoBot1.py";
+
+        List<Treasure> Gotolocations = new List<Treasure>();
+        ColltionAvoider CA = new ColltionAvoider();
+        bool[] HasLocation = new bool[] { false, false, false, false };
+
+        OneONOneOption One = new OneONOneOption();
+        Collector C = new Collector();
+        AttackingSpree AS = new AttackingSpree();
+        int index = 0;
+        public void DoTurn(IPirateGame game)
+        {
+            List<Pirate> MyPirates = game.MyPirates();
+            //if (index == 0)
+            //{
+            //    DataForLife.DataSending ds = new DataSending();
+            //    ds.SendData(null);
+            //    index++;
+            // }
+
+            /*   List<PirateWithLocation> PWL = new List<PirateWithLocation>();
+               MovingOption mo = new MovingOption(PWL, game);
+
+               List<Pirate> MyPirates = game.MyPirates();
+   */
+            if (MyPirates.Count == 1)
+            {
+                if (index == 0)
+                {
+                    One.Tresure = game.Treasures()[0];
+                    index++;
+                }
+                One.EnemyPirate = game.EnemyPirates()[0];
+                One.MyPlayer = MyPirates[0];
+                One.Game = game;
+                One.OneONOneTurn();
+            }
+            else
+            {
+                AS.EnemyPirates = game.EnemyPirates();
+                AS.MyPirates = game.MyPirates();
+                AS.Game = game;
+                AS.DoTurn();
+            }
+            /*
+        else
+        {
+
+            //  game.Debug("MyPirate[0] == Pirate id {0}", MyPirates[0].Id);
+            Location[] Goto = new Location[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+
+                //     TryShoot(MyPirates[i], game.EnemyPirates(),game);
+
+                if (!HasLocation[i])
+                {
+
+                    Goto[i] = GotoLocation(MyPirates[i], game);
+                    PWL.Add(new PirateWithLocation(MyPirates[i], Goto[i], game));
+
+                    game.Debug("Pirate {0} Will Go to Location {1}:{2}", MyPirates[i].Id, Goto[i].Row, Goto[i].Col);
+                }
+                else
+                {
+                    if (MyPirates[i].HasTreasure)
+                    {
+                        Goto[i] = MyPirates[i].InitialLocation;
+                        PWL.Add(new PirateWithLocation(MyPirates[i], Goto[i], game));
+                        HasLocation[i] = false;
+                    }
+                    else
+                    {
+
+                        Goto[i] = Gotolocations[Gotolocations.Count - 4 + MyPirates[i].Id].Location;
+                        if (!GameHasTresure(Goto[i], game))
+                            Goto[i] = Goto[i] = GotoLocation(MyPirates[i], game);
+
+                        PWL.Add(new PirateWithLocation(MyPirates[i], Goto[i], game));
+                        game.Debug("Pirate {0} Will Go to Location {1}:{2}", MyPirates[i].Id, Goto[i].Row, Goto[i].Col);
+                    }
+                }
+            }
+            mo.list = PWL;
+            int[] Answer = mo.DoRegularTurn();
+            game.Debug("Answer == {0} , {1} , {2}, {3}", Answer[0], Answer[1], Answer[2], Answer[3]);
+            for (int i = 0; i < 4; i++)//To Add- Check Location is closest to selected player;;;;
+            {
+
+                List<Location> Options = game.GetSailOptions(MyPirates[i], Goto[i], Answer[i]);
+                Location locationToGo = CA.BestLoction(Options, MyPirates[i], game);
+                if (!ComperLocations(locationToGo, MyPirates[MyPirates[i].Id].Location))
+                {
+                    //    game.Debug("Pirate {0} Is Going to {1}-{2]", MyPirates[i].Id, locationToGo.Row, locationToGo.Col);
+                    game.SetSail(MyPirates[MyPirates[i].Id], locationToGo);
+                }
+
+            }
+            
+        }
+      */
+        }
+
+        private bool GameHasTresure(Location location, IPirateGame game)
+        {
+
+            List<Treasure> AllLocations = game.Treasures();
+            foreach (Treasure t in AllLocations)
+            {
+                if (ComperLocations(t.Location, location))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void TryShoot(Pirate pirate, List<Pirate> list, IPirateGame game)
+        {
+            foreach (Pirate p in list)
+                if (game.Distance(pirate, p) <= game.GetAttackRadius())
+                {
+                    game.Attack(pirate, p);
+                }
+        }
+
+        public bool ComperLocations(Location a, Location b)
+        {
+            return (a.Col == b.Col && a.Row == b.Row);
+        }
+        public Location GotoLocation(Pirate p, IPirateGame Game)
+        {
+            if (p.HasTreasure)
+            {
+                HasLocation[p.Id] = false;
+                return p.InitialLocation;
+            }
+
+            List<Treasure> AllLocations = Game.Treasures();
+
+            int[] Distances = new int[Game.Treasures().Count];
+
+            for (int i = 0; i < Distances.Length; i++)
+                Distances[i] = Game.Distance(p, AllLocations[i].Location);
+
+            for (int i = 0; i < Distances.Length - 1; i++)
+            {
+                for (int j = i + 1; j < Distances.Length; j++)
+                {
+                    if (Distances[i] > Distances[j])
+                    {
+                        int Temp = Distances[i];
+                        Distances[i] = Distances[j];
+                        Distances[j] = Temp;
+
+                        Treasure TresureTemp = AllLocations[i];
+                        AllLocations[i] = AllLocations[j];
+                        AllLocations[j] = TresureTemp;
+                    }
+                }
+            }
+
+
+            for (int i = 0; i < AllLocations.Count; i++)
+            {
+                if (!Gotolocations.Contains(AllLocations[i]))
+                {
+                    Gotolocations.Add(AllLocations[i]);
+                    HasLocation[p.Id] = true;
+                    return AllLocations[i].Location;
+                }
+            }
+
+            return p.InitialLocation;
+
+
+
+
+        } //Add - Not More than one pirate over a location
+    }
+    
+    
+    
+    class AttackingSpree
+    {
+        public List<Pirate> MyPirates = new List<Pirate>();
+        public List<Pirate> EnemyPirates = new List<Pirate>();
+        public IPirateGame Game { get; set; }
+
+
+
+        public void DoTurn()
+        {
+
+            List<Pirate> Targets = new List<Pirate>();
+            List<Pirate> PossibaleAttackers = new List<Pirate>();
+
+            //Check whitch pirates are targets
+            foreach (Pirate p in EnemyPirates)
+            {
+                if (p.HasTreasure)
+                {
+                    Targets.Add(p);
+                    Game.Debug("Enemy Pirate Number {0} has Tresure", p.Id);
+                }
+            }
+
+
+            foreach (Pirate p in MyPirates)
+            {
+                if (!p.HasTreasure && p.ReloadTurns == 0)
+                {
+                    PossibaleAttackers.Add(p);
+                    Game.Debug(" Pirate Number {0} is a  Possible attacker", p.Id);
+                }
+            }
+
+            if (Targets.Count == 0 || PossibaleAttackers.Count == 0)
+            {
+                RegularTurn();
+            }
+            else
+            {
+                Pirate[] Answer = FindBestPirate(PossibaleAttackers, Targets);
+                Game.Debug("Pirate Number {0} is good to attack Pirate Numer {1}", Answer[0].Id, Answer[1].Id);
+
+                //Posible error
+                bool Possible = CheckIfPossible(Answer[0], Answer[1]);
+                if (Possible)
+                {
+                    if (Game.InRange(Answer[0].Location, Answer[1].Location))
+                    {
+                        Game.Debug("Pirate Number {0} Has Attacked Enemy Pirate Number {1}", Answer[0].Id, Answer[1].Id);
+                        Game.Attack(Answer[0], Answer[1]);
+                        return;
+                    }
+                    else
+                    {
+                        if (Answer[0].Location.Row == Answer[1].InitialLocation.Row && Answer[0].Location.Col == Answer[1].Location.Col - 1)
+                        {
+                            Location Destination = Game.GetSailOptions(Answer[0], Answer[1].Location, 6)[0];
+                            Game.SetSail(Answer[0], Destination);
+                            Game.Debug("Pirate Number {0} wiil go to Location {1} -2", Answer[0].Id,Destination.Row,Destination.Col);
+                        }
+                        else
+                        {
+                            Location Destination = Game.GetSailOptions(Answer[0], new Location(Answer[1].InitialLocation.Row, Answer[1].InitialLocation.Col - 1), 6)[0];
+                            Game.SetSail(Answer[0], Destination);
+                            Game.Debug("Pirate Number {0} wiil go to Location {1} -2", Answer[0].Id, Destination.Row, Destination.Col);
+                          
+                        }
+                    }
+                }
+                else
+                {
+                    RegularTurn();
+                }
+
+
+            }
+        }
+
+        private void RegularTurn()
+        {
+            Game.Debug("******************************INSIDE REGULAR TURN*****************************************");
+            int Moves = 6;
+            foreach (Pirate p in MyPirates)
+            {
+                if (p.HasTreasure)
+                {
+                    Location Destination = Game.GetSailOptions(p, p.InitialLocation, 1)[0];
+                    Game.SetSail(p, Destination);
+                    Game.Debug("Pirate Number {0} Has Tresure go back to location {1}-{2}",p.Id,Destination.Row,Destination.Col);
+                    Moves--;
+                }
+            }
+
+            TresureOptions TO = new TresureOptions();
+            TO.game = Game;
+            TO.MyPirate = Game.MyPiratesWithoutTreasures();
+            PirateWithTresure PWT = TO.BestPirateWithTresue();
+            Location l = Game.GetSailOptions(PWT.pirate, PWT.Tresure, Moves)[0];
+            Game.SetSail(PWT.pirate, l);
+            Game.Debug("Pirate Number {0} Has Tresure go back to location {1}-{2}", PWT, l.Row, l.Col);
+
+
+
+            //Find NearestTrsure ;
+            // Find Super Near ;
+            // Send With six;
+        }
+
+        public bool CheckIfPossible(Pirate MY, Pirate Enemy)
+        {
+            return Game.Distance(Enemy.Location, Enemy.InitialLocation) > (Game.Distance(MY.Location, Enemy.InitialLocation) / 6);
+        }
+
+
+        private Pirate[] FindBestPirate(List<Pirate> PossibaleAttackers, List<Pirate> Targets)
+        {
+            Pirate[] Answers = new Pirate[2];
+            int[,] Distancese = new int[PossibaleAttackers.Count, Targets.Count];
+            for (int i = 0; i < Distancese.GetLength(0); i++)
+            {
+                for (int j = 0; j < Distancese.GetLength(1); j++)
+                {
+                    Distancese[i, j] = Game.Distance(PossibaleAttackers[i].Location, Targets[j].Location);
+                }
+            }
+            int Min = Distancese[0, 0];
+            int[] index = new int[] { 0, 0 };
+
+            for (int i = 0; i < Distancese.GetLength(0); i++)
+            {
+                for (int j = 0; j < Distancese.GetLength(1); j++)
+                {
+                    if (Min > Game.Distance(PossibaleAttackers[i].Location, Targets[j].Location))
+                    {
+                        Min = Game.Distance(PossibaleAttackers[i].Location, Targets[j].Location);
+                        index[0] = i;
+                        index[1] = j;
+                    }
+                }
+            }
+            Answers[0] = PossibaleAttackers[index[0]];
+            Answers[1] = Targets[index[1]];
+            return Answers;
+
+
+        }
+    }
+
+
+    class TresureOptions
+    {
+        public List<Pirate> MyPirate;
+        public IPirateGame game;
+
+        public PirateWithTresure BestPirateWithTresue()
+        {
+            List<Treasure> AllTreessures = game.Treasures();
+
+
+            int[,] Distancese = new int[MyPirate.Count, AllTreessures.Count];
+            for (int i = 0; i < Distancese.GetLength(0); i++)
+            {
+                for (int j = 0; j < Distancese.GetLength(1); j++)
+                {
+                    Distancese[i, j] = game.Distance(MyPirate[i].Location, AllTreessures[j].Location);
+                }
+            }
+            int Min = Distancese[0, 0];
+            int[] index = new int[] { 0, 0 };
+
+            for (int i = 0; i < Distancese.GetLength(0); i++)
+            {
+                for (int j = 0; j < Distancese.GetLength(1); j++)
+                {
+                    if (Min > game.Distance(MyPirate[i].Location, AllTreessures[j].Location))
+                    {
+                        Min = game.Distance(MyPirate[i].Location, AllTreessures[j].Location);
+                        index[0] = i;
+                        index[1] = j;
+                    }
+                }
+            }
+            PirateWithTresure Answer = new PirateWithTresure(MyPirate[index[0]], AllTreessures[index[1]], game);
+            return Answer;
+        }
+    }
+    class PirateWithTresure
+    {
+        public Pirate pirate;
+        public Treasure Tresure;
+        public IPirateGame game;
+        public PirateWithTresure(Pirate p, Treasure t, IPirateGame Game)
+        {
+            this.pirate = p;
+            this.Tresure = t;
+            this.game = Game;
+        }
+        public int Distance()
+        {
+            return game.Distance(pirate.Location, Tresure.Location);
+        }
+
+    }
+}
