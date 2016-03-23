@@ -491,7 +491,7 @@ namespace MyBot
             game.Debug("3.1");
             foreach (Pirate p in AllAttackers)
             {
-                if (p.ReloadTurns == 0)
+                if (p.ReloadTurns == 0 && !p.IsLost && p.TurnsToSober ==0 && p.TurnsToRevive ==0.)
                 {
                     PosibleAttackers.Add(p);
                     
